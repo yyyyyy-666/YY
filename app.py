@@ -17,6 +17,7 @@ from gaokao.data.school_living import get_school_living, FRESHMAN_TIPS
 from gaokao.data.career_path import get_career_path
 from gaokao.data.financial_aid import SCHOLARSHIP_TYPES, FINANCIAL_PLANNING
 from gaokao.data.quickref import get_major_golden_rules
+from gaokao.data.score_quality import format_score_timeline, quality_statistics
 
 st.set_page_config(page_title="高考志愿策略师", page_icon="🎓", layout="wide")
 
@@ -455,12 +456,7 @@ def get_major_info_by_name(name):
 
 def format_score_str(scores):
     if not scores: return ""
-    parts = []
-    for y in sorted(scores.keys()):
-        s = scores[y]
-        v = s.get("min") if isinstance(s, dict) else s
-        if v: parts.append(f"{y}:{v}分")
-    return "、".join(parts)
+    return format_score_timeline(scores)
 
 def score_to_color(v):
     if v >= 80: return "#22c55e"
@@ -763,6 +759,15 @@ elif page_key == "数据看板":
     with cols[1]: st.metric("📚 专业总数", f"{len(ALL_MAJOR_NAMES)}+", delta="111+")
     with cols[2]: st.metric("🏙️ 城市数据", "50+", delta="31省")
     with cols[3]: st.metric("📈 行业分析", "40+", delta="全面覆盖")
+
+    st.markdown('<div class="card"><div class="card-title">📝 数据质量</div>', unsafe_allow_html=True)
+    qs = quality_statistics(ALL_SCHOOLS)
+    qa, qb, qc = st.columns(3)
+    with qa: st.metric("📆 官方数据", f"{qs.get('official',0)}条", delta="来自招生考试院")
+    with qb: st.metric("📆 估算数据", f"{qs.get('estimated',0)}条", delta="基于邻近年份推算")
+    with qc: st.metric("🔮 预测数据", f"{qs.get('predicted',0)}条", delta="基于历史趋势")
+    st.markdown('<div style="color:#64748b;font-size:12px">院校查询和志愿推荐中，官方/估算/预测会分别标注</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     with c1:

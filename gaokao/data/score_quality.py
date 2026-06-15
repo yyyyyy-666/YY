@@ -20,10 +20,7 @@ def build_score_timeline(scores):
         is_placeholder = val in (0, 130)
 
         if in_raw and not is_placeholder:
-            if year == "2025":
-                out[year] = {"score": val, "quality": "predicted"}
-            else:
-                out[year] = {"score": val, "quality": "official"}
+            out[year] = {"score": val, "quality": "official"}
         else:
             if year == "2023":
                 base = known.get("2024", 0)

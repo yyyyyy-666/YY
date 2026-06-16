@@ -2,7 +2,8 @@ from .models import (
     StudentInput, AnalysisResult, FamilyCondition,
     CityRecommendation, UniversityRecommendation, MajorRecommendation,
 )
-from .data.universities import JIANGXI_DATA, BATCH_LINES
+from .data.universities import BATCH_LINES
+from .data.admissions import get_all_schools, get_latest_official_score, format_timeline_str, normalize_school
 from .data.majors import MAJORS, get_dangerous_majors, get_majors_for_school
 
 
@@ -39,9 +40,10 @@ class ZhangXuefengEngine:
 
     def _school_filter(self, student: StudentInput) -> list[UniversityRecommendation]:
         score = student.score
+        all_schools = get_all_schools()
         matched = []
-        for u in sorted(JIANGXI_DATA, key=lambda x: self._get_latest_score(x), reverse=True):
-            latest = self._get_latest_score(u)
+        for name, u in sorted(all_schools.items(), key=lambda x: get_latest_official_score(x[1]), reverse=True):
+            latest = get_latest_official_score(u)
             if latest == 0:
                 continue
             diff = score - latest
@@ -53,45 +55,34 @@ class ZhangXuefengEngine:
                 tier = "保"
             else:
                 continue
+            timeline = normalize_school(u)
+            score_str = format_timeline_str(timeline) or f"{latest}分"
             level = u.get("level", "")
             city = u.get("city", "")
             typ = u.get("type", "")
             nature = u.get("nature", "")
-            scores = u.get("scores", {})
-            years_info = []
-            for yr in ["2023", "2024", "2025"]:
-                if yr in scores:
-                    years_info.append(f'{yr}年{scores[yr]["min"]}分')
-            score_str = " / ".join(years_info) if years_info else f"{latest}分"
             strong = u.get("strong_majors", [])
             strong_str = "、".join(strong[:3]) if strong else ""
             reason = f'{level}，{city}，{typ}，{nature}'
             if strong_str:
                 reason += f'，强势专业：{strong_str}'
             matched.append(UniversityRecommendation(
-                name=u["name"], tier=tier,
+                name=name, tier=tier,
                 reason=reason,
                 score_range=score_str,
             ))
         if not matched:
-            for u in sorted(JIANGXI_DATA, key=lambda x: self._get_latest_score(x)):
-                latest = self._get_latest_score(u)
+            for name, u in sorted(all_schools.items(), key=lambda x: get_latest_official_score(x[1])):
+                latest = get_latest_official_score(u)
                 if latest > 0 and latest <= score:
                     matched.append(UniversityRecommendation(
-                        name=u["name"], tier="保",
+                        name=name, tier="保",
                         reason=f'{u.get("level","")}，{u.get("city","")}',
                         score_range=f"{latest}分",
                     ))
                     if len(matched) >= 5:
                         break
         return matched[:12]
-
-    def _get_latest_score(self, school: dict) -> int:
-        scores = school.get("scores", {})
-        for yr in ["2025", "2024", "2023"]:
-            if yr in scores:
-                return scores[yr].get("min", 0)
-        return 0
 
     def _major_filter(self, student: StudentInput, strategy: str) -> list[MajorRecommendation]:
         is_vocational = student.score < BATCH_LINES["二本线"]
